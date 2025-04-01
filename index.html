@@ -41,6 +41,12 @@
     <input type="number" id="capitalInput" value="1000" min="0" step="any">
 </div>
 
+<!-- Champ pour saisir le pas de variation -->
+<div class="container">
+    <label for="stepInput">Pas de variation (%) :</label>
+    <input type="number" id="stepInput" value="0.01" min="0.001" step="any">
+</div>
+
 <div class="tables-container">
     <!-- Tableau de gauche : variations de 0 à 0,5 % -->
     <div>
@@ -82,13 +88,12 @@
 </div>
 
 <script>
-    // Définition des multiplicateurs d'effet de levier et du pas de variation
+    // Définition des multiplicateurs d'effet de levier et contrôle de la précision
     const leverageMultipliers = [1, 2, 5, 10, 20];
-    const step = 0.01;
-    const epsilon = 1e-10; // Pour pallier les imprécisions du float
+    const epsilon = 1e-10; // Tolérance pour les calculs flottants
 
     // Fonction factorisée pour générer les lignes d'un tableau
-    function generateTable(tbody, startVariation, endVariation, capital) {
+    function generateTable(tbody, startVariation, endVariation, capital, step) {
         tbody.innerHTML = "";
         for (let variation = startVariation; variation <= endVariation + epsilon; variation += step) {
             const row = document.createElement("tr");
@@ -113,15 +118,19 @@
     // Fonction de mise à jour des deux tableaux
     function updateTables() {
         const capital = parseFloat(document.getElementById("capitalInput").value);
+        const step = parseFloat(document.getElementById("stepInput").value);
         const leftTableBody = document.getElementById("leftTableBody");
         const rightTableBody = document.getElementById("rightTableBody");
 
-        generateTable(leftTableBody, 0, 0.5, capital);
-        generateTable(rightTableBody, 0.5, 1, capital);
+        if (!isNaN(capital) && !isNaN(step) && step > 0) {
+            generateTable(leftTableBody, 0, 0.5, capital, step);
+            generateTable(rightTableBody, 0.5, 1, capital, step);
+        }
     }
 
-    // Actualisation lors du changement de capital engagé
+    // Actualisation lors du changement de capital ou de pas de variation
     document.getElementById("capitalInput").addEventListener("input", updateTables);
+    document.getElementById("stepInput").addEventListener("input", updateTables);
 
     // Affichage initial
     updateTables();
