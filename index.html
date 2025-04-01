@@ -8,26 +8,54 @@
             font-family: Arial, sans-serif;
             margin: 20px;
         }
+
         .container {
+            display: flex;
+            gap: 20px; /* Espacement entre les groupes */
+            flex-wrap: wrap; /* Les éléments passent à la ligne automatiquement */
             margin-bottom: 20px;
         }
+
+        .input-group {
+            display: flex;
+            flex-direction: column; /* Chaque label suivi de son input */
+            align-items: flex-start; /* Aligné à gauche */
+            gap: 5px; /* Espacement entre le label et l'input */
+            margin-bottom: 10px; /* Espacement entre chaque groupe */
+        }
+
+        .input-group label {
+            font-size: 14px; /* Taille de texte réduite pour les labels */
+        }
+
+        .input-group input {
+            width: 120px; /* Largeur uniforme pour tous les champs */
+            padding: 5px; /* Espacement interne pour les champs */
+            font-size: 12px; /* Taille du texte des inputs */
+        }
+
         .tables-container {
             display: flex;
             gap: 20px;
             flex-wrap: wrap;
         }
+
         table {
             border-collapse: collapse;
             width: 100%;
+            margin-bottom: 20px;
         }
+
         th, td {
             border: 1px solid #ccc;
             padding: 2px 10px;
             text-align: center;
         }
+
         th {
             background-color: #f2f2f2;
         }
+
         h2 {
             text-align: center;
         }
@@ -35,75 +63,102 @@
 </head>
 <body>
 
-<!-- Champ pour saisir le capital engagé -->
-<div class="container">
-    <label for="capitalInput">Capital engagé (€) :</label>
-    <input type="number" id="capitalInput" value="1000" min="0" step="any">
-</div>
+<h2>Simulation de gains en bourse</h2>
 
-<!-- Champ pour saisir le pas de variation -->
 <div class="container">
-    <label for="stepInput">Pas de variation (%) :</label>
-    <input type="number" id="stepInput" value="0.01" min="0.001" step="any">
-</div>
-
-<div class="tables-container">
-    <!-- Tableau de gauche : variations de 0 à 0,5 % -->
-    <div>
-        <table>
-            <thead>
-            <tr>
-                <th>Variation (%)</th>
-                <th>x1</th>
-                <th>x2</th>
-                <th>x5</th>
-                <th>x10</th>
-                <th>x20</th>
-            </tr>
-            </thead>
-            <tbody id="leftTableBody">
-            <!-- Les lignes seront générées par JavaScript -->
-            </tbody>
-        </table>
+    <!-- Champ pour définir le capital engagé -->
+    <div class="input-group">
+        <label for="capitalInput">Capital engagé (€) :</label>
+        <input type="number" id="capitalInput" value="1000" min="0" step="any">
     </div>
 
-    <!-- Tableau de droite : variations de 0,5 à 1 % -->
-    <div>
-        <table>
-            <thead>
-            <tr>
-                <th>Variation (%)</th>
-                <th>x1</th>
-                <th>x2</th>
-                <th>x5</th>
-                <th>x10</th>
-                <th>x20</th>
-            </tr>
-            </thead>
-            <tbody id="rightTableBody">
-            <!-- Les lignes seront générées par JavaScript -->
-            </tbody>
-        </table>
+    <!-- Champ pour définir le pas de variation -->
+    <div class="input-group">
+        <label for="stepInput">Pas de variation (%) :</label>
+        <input type="number" id="stepInput" value="0.01" min="0.001" step="any">
+    </div>
+
+    <!-- Champ pour définir la variation minimale -->
+    <div class="input-group">
+        <label for="minVariationInput">Variation minimum (%) :</label>
+        <input type="number" id="minVariationInput" value="0.01" step="any">
+    </div>
+
+    <!-- Champ pour définir la variation maximale -->
+    <div class="input-group">
+        <label for="maxVariationInput">Variation maximum (%) :</label>
+        <input type="number" id="maxVariationInput" value="1" step="any">
+    </div>
+
+    <!-- Champ pour définir le nombre de lignes par tableau -->
+    <div class="input-group">
+        <label for="rowsPerTableInput">Nombre de lignes par tableau :</label>
+        <input type="number" id="rowsPerTableInput" value="25" min="1" step="1">
     </div>
 </div>
 
+<div id="tablesContainer" class="tables-container">
+    <!-- Les tableaux seront générés par JavaScript -->
+</div>
 <script>
-    // Définition des multiplicateurs d'effet de levier et contrôle de la précision
+    // Multiplicateurs d'effet de levier
     const leverageMultipliers = [1, 2, 5, 10, 20];
-    const epsilon = 1e-10; // Tolérance pour les calculs flottants
+    const epsilon = 1e-10; // Tolérance pour les imprécisions flottantes
 
-    // Fonction factorisée pour générer les lignes d'un tableau
-    function generateTable(tbody, startVariation, endVariation, capital, step) {
-        tbody.innerHTML = "";
-        for (let variation = startVariation; variation <= endVariation + epsilon; variation += step) {
+    /**
+     * Fonction pour créer un conteneur de tableau avec en-tête
+     */
+    function createTableContainer() {
+        const tableContainer = document.createElement("div");
+        const table = document.createElement("table");
+        const thead = document.createElement("thead");
+        const tbody = document.createElement("tbody");
+
+        const headerRow = document.createElement("tr");
+
+        // Création de l'en-tête du tableau
+        const headers = ["Variation (%)", "x1", "x2", "x5", "x10", "x20"];
+        headers.forEach(headerText => {
+            const th = document.createElement("th");
+            th.textContent = headerText;
+            headerRow.appendChild(th);
+        });
+
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        tableContainer.appendChild(table);
+
+        return { tableContainer, tbody };
+    }
+
+    /**
+     * Fonction pour générer les tableaux
+     */
+    function generateTables(minVariation, maxVariation, step, capital, rowsPerTable) {
+        // Conteneur principal des tableaux
+        const tablesContainer = document.getElementById("tablesContainer");
+        tablesContainer.innerHTML = ""; // On nettoie les tableaux existants
+
+        let { tableContainer, tbody } = createTableContainer();
+        let currentRows = 0; // Compteur pour le nombre de lignes dans le tableau courant
+
+        // Boucle pour générer les lignes, commence à minVariation et incrémente par step
+        for (let variation = minVariation; variation <= maxVariation + epsilon; variation += step) {
+            // Standardiser les variations flottantes (éviter dépassements)
+            if (variation > maxVariation) {
+                variation = maxVariation;
+            }
+
+            // Créer une nouvelle ligne
             const row = document.createElement("tr");
 
-            // Colonne Variation
+            // Colonne Variation (première colonne)
             const variationCell = document.createElement("td");
             variationCell.textContent = variation.toFixed(2);
             row.appendChild(variationCell);
 
-            // Colonnes pour chaque effet de levier
+            // Colonnes pour chaque multiplicateur d'effet de levier
             leverageMultipliers.forEach(multiplier => {
                 const gain = capital * (variation / 100) * multiplier;
                 const cell = document.createElement("td");
@@ -112,28 +167,48 @@
             });
 
             tbody.appendChild(row);
+            currentRows++;
+
+            // Si le nombre maximum de lignes est atteint, créer un nouveau tableau
+            if (currentRows === rowsPerTable) {
+                tablesContainer.appendChild(tableContainer); // Ajouter le tableau au conteneur
+                ({ tableContainer, tbody } = createTableContainer()); // Créer un nouveau tableau
+                currentRows = 0; // Réinitialiser le compteur
+            }
+        }
+
+        // Si le tableau courant contient des lignes, l'ajouter au conteneur
+        if (currentRows > 0) {
+            tablesContainer.appendChild(tableContainer);
         }
     }
 
-    // Fonction de mise à jour des deux tableaux
+    /**
+     * Fonction pour mettre à jour les tableaux en fonction des inputs
+     */
     function updateTables() {
         const capital = parseFloat(document.getElementById("capitalInput").value);
         const step = parseFloat(document.getElementById("stepInput").value);
-        const leftTableBody = document.getElementById("leftTableBody");
-        const rightTableBody = document.getElementById("rightTableBody");
+        const minVariation = parseFloat(document.getElementById("minVariationInput").value);
+        const maxVariation = parseFloat(document.getElementById("maxVariationInput").value);
+        const rowsPerTable = parseInt(document.getElementById("rowsPerTableInput").value);
 
-        if (!isNaN(capital) && !isNaN(step) && step > 0) {
-            generateTable(leftTableBody, 0, 0.5, capital, step);
-            generateTable(rightTableBody, 0.5, 1, capital, step);
+        if (!isNaN(capital) && !isNaN(step) && step > 0 &&
+            !isNaN(minVariation) && !isNaN(maxVariation) &&
+            maxVariation >= minVariation && rowsPerTable > 0) {
+            generateTables(minVariation, maxVariation, step, capital, rowsPerTable);
         }
     }
 
-    // Actualisation lors du changement de capital ou de pas de variation
+    // Ajouter des écouteurs d'événements pour les champs d'input
     document.getElementById("capitalInput").addEventListener("input", updateTables);
     document.getElementById("stepInput").addEventListener("input", updateTables);
+    document.getElementById("minVariationInput").addEventListener("input", updateTables);
+    document.getElementById("maxVariationInput").addEventListener("input", updateTables);
+    document.getElementById("rowsPerTableInput").addEventListener("input", updateTables);
 
-    // Affichage initial
     updateTables();
 </script>
+
 </body>
 </html>
